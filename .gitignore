@@ -1,0 +1,7 @@
+/out/
+
+/C/Util/7zipInstall/x64/
+/C/Util/7zipUninstall/x64/
+
+/CPP/7zip/**/x64/
+/CPP/7zip/**/x86/
