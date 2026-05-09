@@ -8,6 +8,10 @@ This project is a Windows-focused modification of [7-Zip](https://github.com/ip7
 
 It is not the official 7-Zip project. The official 7-Zip website is [7-zip.org](https://7-zip.org).
 
+### Notice
+
+This modified build was assisted by Codex (GPT-5.5) for personal use. The maintainer has not performed a full manual code review or security audit. Please be aware of possible risks before downloading or using release binaries.
+
 ### Windows changes
 
 - Adds a top-level 7-Zip shell menu item: **Smart Extract and Open**.
@@ -27,6 +31,10 @@ The modified code must continue to follow the original license terms, including 
 本项目基于 [7-Zip](https://github.com/ip7z/7zip) 源码修改，基础版本为 7-Zip 26.01，当前改动只面向 Windows 版本。
 
 本项目不是官方 7-Zip 项目。官方 7-Zip 网站是 [7-zip.org](https://7-zip.org)。
+
+### 提示
+
+这个修改版本由 Codex（GPT-5.5）辅助修改，主要用于自用。维护者没有做完整的人工代码审查或安全审计。下载或使用 Release 中的二进制文件前，请注意可能存在的风险。
 
 ### Windows 改动
 
