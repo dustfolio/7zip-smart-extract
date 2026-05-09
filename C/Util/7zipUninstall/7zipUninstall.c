@@ -105,6 +105,19 @@ static LPCWSTR const k_Reg_Path32 = L"Path"
 
 static LPCWSTR const k_Reg_CLSID_7zip = L"CLSID\\" k_7zip_CLSID;
 static LPCWSTR const k_Reg_CLSID_7zip_Inproc = L"CLSID\\" k_7zip_CLSID L"\\InprocServer32";
+static LPCWSTR const k_7zip_Archive_ProgID_Prefix = L"7-Zip.Archive.";
+
+static LPCWSTR const k_AssocExts[] =
+{
+    L"7z", L"zip", L"rar", L"001"
+  , L"tar", L"gz", L"gzip", L"tgz"
+  , L"bz2", L"bzip2", L"tbz", L"tbz2"
+  , L"xz", L"txz", L"lzma", L"z"
+  , L"cab", L"iso", L"wim", L"swm"
+  , L"arj", L"lzh", L"chm", L"cpio"
+  , L"rpm", L"deb", L"dmg", L"hfs"
+  , L"xar", L"apm", L"udf", L"vhd", L"vhdx"
+};
 
 
 #define g_AllUsers True
@@ -335,6 +348,53 @@ static void SetRegKey_Path(void)
 {
   SetRegKey_Path2(HKEY_CURRENT_USER);
   SetRegKey_Path2(HKEY_LOCAL_MACHINE);
+}
+
+static void MakeAssocProgID(WCHAR *dest, LPCWSTR ext)
+{
+  wcscpy(dest, k_7zip_Archive_ProgID_Prefix);
+  wcscat(dest, ext);
+}
+
+static void DeleteArchiveAssociations(void)
+{
+  unsigned i;
+  WCHAR keyName[MAX_PATH + 80];
+  WCHAR subKeyName[MAX_PATH + 100];
+  WCHAR progID[MAX_PATH + 40];
+  WCHAR value[MAX_PATH + 40];
+
+  for (i = 0; i < Z7_ARRAY_SIZE(k_AssocExts); i++)
+  {
+    const LPCWSTR ext = k_AssocExts[i];
+    HKEY key = 0;
+
+    MakeAssocProgID(progID, ext);
+
+    keyName[0] = '.';
+    wcscpy(keyName + 1, ext);
+
+    if (MyRegistry_OpenKey_ReadWrite(HKEY_CLASSES_ROOT, keyName, &key) == ERROR_SUCCESS)
+    {
+      if (MyRegistry_QueryString(key, NULL, value) && AreStringsEqual_NoCase(value, progID))
+        RegDeleteValueW(key, NULL);
+      RegCloseKey(key);
+    }
+
+    wcscpy(subKeyName, progID);
+    wcscat(subKeyName, L"\\shell\\open\\command");
+    MyRegistry_DeleteKey(HKEY_CLASSES_ROOT, subKeyName);
+    wcscpy(subKeyName, progID);
+    wcscat(subKeyName, L"\\shell\\open");
+    MyRegistry_DeleteKey(HKEY_CLASSES_ROOT, subKeyName);
+    wcscpy(subKeyName, progID);
+    wcscat(subKeyName, L"\\shell");
+    MyRegistry_DeleteKey(HKEY_CLASSES_ROOT, subKeyName);
+    wcscpy(subKeyName, progID);
+    wcscat(subKeyName, L"\\DefaultIcon");
+    MyRegistry_DeleteKey(HKEY_CLASSES_ROOT, subKeyName);
+    MyRegistry_DeleteKey(HKEY_CLASSES_ROOT, progID);
+  }
 }
 
 static HRESULT CreateShellLink(LPCWSTR srcPath, LPCWSTR targetPath)
@@ -811,6 +871,7 @@ static int Install(void)
 
     if (*curName == 0)
     {
+      DeleteArchiveAssociations();
       SetRegKey_Path();
       WriteCLSID();
       SetShellProgramsGroup(g_HWND);

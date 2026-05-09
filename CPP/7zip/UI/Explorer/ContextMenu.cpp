@@ -274,6 +274,7 @@ static const CContextMenuCommand g_Commands[] =
   CMD_REC( kExtract,     "Extract",     IDS_CONTEXT_EXTRACT),
   CMD_REC( kExtractHere, "ExtractHere", IDS_CONTEXT_EXTRACT_HERE),
   CMD_REC( kExtractTo,   "ExtractTo",   IDS_CONTEXT_EXTRACT_TO),
+  CMD_REC( kSmartExtractOpen, "SmartExtractOpen", IDS_CONTEXT_SMART_EXTRACT_OPEN),
   CMD_REC( kTest,        "Test",        IDS_CONTEXT_TEST),
   CMD_REC( kCompress,           "Compress",           IDS_CONTEXT_COMPRESS),
   CMD_REC( kCompressEmail,      "CompressEmail",      IDS_CONTEXT_COMPRESS_EMAIL),
@@ -836,6 +837,16 @@ Z7_COMWF_B CZipContextMenu::QueryContextMenu(HMENU hMenu, UINT indexMenu,
           specFolder = GetSubFolderNameForExtract(fs2us(fi0.Name));
         specFolder.Add_PathSepar();
 
+        if (_fileNames.Size() == 1
+            && !_dropMode
+            && (contextMenuFlags & NContextMenuFlags::kSmartExtractOpen) != 0)
+        {
+          CCommandMapItem cmi;
+          cmi.Folder = baseFolder + specFolder;
+          AddCommand(kSmartExtractOpen, mainString, cmi);
+          MyInsertMenu(popupMenu, subIndex++, currentCommandID++, mainString, bitmap);
+        }
+
         if ((contextMenuFlags & NContextMenuFlags::kExtract) != 0)
         {
           // Extract
@@ -865,6 +876,7 @@ Z7_COMWF_B CZipContextMenu::QueryContextMenu(HMENU hMenu, UINT indexMenu,
           Set_UserString_in_LastCommand(s);
           MyInsertMenu(popupMenu, subIndex++, currentCommandID++, s, bitmap);
         }
+
       }
 
       if ((contextMenuFlags & NContextMenuFlags::kTest) != 0)
@@ -1285,6 +1297,19 @@ HRESULT CZipContextMenu::InvokeCommandCommon(const CCommandMapItem &cmi)
         ExtractArchives(_fileNames, cmi.Folder,
             (cmdID == kExtract), // showDialog
             (cmdID == kExtractTo) && _elimDup.Val, // elimDup
+            _writeZone
+            );
+        break;
+      }
+      case kSmartExtractOpen:
+      {
+        if (_attribs.FirstDirIndex != -1)
+        {
+          ShowErrorMessageRes(IDS_SELECT_FILES);
+          break;
+        }
+        ExtractArchivesAndOpen(_fileNames, cmi.Folder,
+            true, // elimDup
             _writeZone
             );
         break;

@@ -4,6 +4,10 @@
 
 #ifndef Z7_EXTERNAL_CODECS
 
+#ifndef UNDER_CE
+#include <shellapi.h>
+#endif
+
 #include "../../../Common/MyException.h"
 
 #include "../../UI/Common/EnumDirItems.h"
@@ -234,6 +238,24 @@ void ExtractArchives(const UStringVector &arcPaths, const UString &outFolder,
   if (writeZone != (UInt32)(Int32)-1)
     eo.ZoneMode = (NExtract::NZoneIdMode::EEnum)writeZone;
   ExtractGroupCommand(arcPaths, showDialog, eo);
+}
+
+void ExtractArchivesAndOpen(const UStringVector &arcPaths, const UString &outFolder, bool elimDup, UInt32 writeZone)
+{
+  CExtractOptions eo;
+  eo.OutputDir = us2fs(outFolder);
+  eo.TestMode = false;
+  eo.ElimDup.Val = elimDup;
+  eo.ElimDup.Def = elimDup;
+  if (writeZone != (UInt32)(Int32)-1)
+    eo.ZoneMode = (NExtract::NZoneIdMode::EEnum)writeZone;
+  const HRESULT result = ExtractGroupCommand(arcPaths, false, eo);
+  if (result == S_OK)
+  {
+    #ifndef UNDER_CE
+    ::ShellExecuteW(g_HWND, L"open", (LPCWSTR)outFolder, NULL, NULL, SW_SHOWNORMAL);
+    #endif
+  }
 }
 
 void TestArchives(const UStringVector &arcPaths, bool hashMode)

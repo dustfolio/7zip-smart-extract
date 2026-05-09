@@ -2,6 +2,10 @@
 
 #include "StdAfx.h"
 
+#ifndef UNDER_CE
+#include <shellapi.h>
+#endif
+
 #include <wchar.h>
 
 #include "../../../Common/IntToString.h"
@@ -88,7 +92,14 @@ static HRESULT Call7zGui(const UString &params,
     return hres;
   }
   if (waitFinish)
+  {
     process.Wait();
+    #ifndef UNDER_CE
+    DWORD exitCode = 0;
+    if (process.GetExitCodeProcess(&exitCode) && exitCode != 0)
+      return E_FAIL;
+    #endif
+  }
   else if (event != NULL)
   {
     HANDLE handles[] = { process, *event };
@@ -239,7 +250,7 @@ HRESULT CompressFiles(
   MY_TRY_FINISH
 }
 
-static void ExtractGroupCommand(const UStringVector &arcPaths, UString &params, bool isHash)
+static HRESULT ExtractGroupCommand(const UStringVector &arcPaths, UString &params, bool isHash, bool waitFinish = false)
 {
   AddLagePagesSwitch(params);
   params += (isHash ? kHashIncludeSwitches : kArcIncludeSwitches);
@@ -247,15 +258,14 @@ static void ExtractGroupCommand(const UStringVector &arcPaths, UString &params, 
   NSynchronization::CManualResetEvent event;
   HRESULT result = CreateMap(arcPaths, fileMapping, event, params);
   if (result == S_OK)
-    result = Call7zGui(params, false, &event);
+    result = Call7zGui(params, waitFinish, &event);
   if (result != S_OK)
     ErrorMessageHRESULT(result);
+  return result;
 }
 
-void ExtractArchives(const UStringVector &arcPaths, const UString &outFolder, bool showDialog, bool elimDup, UInt32 writeZone)
+static void AddExtractSwitches(UString &params, const UString &outFolder, bool elimDup, UInt32 writeZone)
 {
-  MY_TRY_BEGIN
-  UString params ('x');
   if (!outFolder.IsEmpty())
   {
     params += " -o";
@@ -268,9 +278,30 @@ void ExtractArchives(const UStringVector &arcPaths, const UString &outFolder, bo
     params += " -snz";
     params.Add_UInt32(writeZone);
   }
+}
+
+void ExtractArchives(const UStringVector &arcPaths, const UString &outFolder, bool showDialog, bool elimDup, UInt32 writeZone)
+{
+  MY_TRY_BEGIN
+  UString params ('x');
+  AddExtractSwitches(params, outFolder, elimDup, writeZone);
   if (showDialog)
     params += kShowDialogSwitch;
   ExtractGroupCommand(arcPaths, params, false);
+  MY_TRY_FINISH_VOID
+}
+
+void ExtractArchivesAndOpen(const UStringVector &arcPaths, const UString &outFolder, bool elimDup, UInt32 writeZone)
+{
+  MY_TRY_BEGIN
+  UString params ('x');
+  AddExtractSwitches(params, outFolder, elimDup, writeZone);
+  if (ExtractGroupCommand(arcPaths, params, false, true) == S_OK)
+  {
+    #ifndef UNDER_CE
+    ::ShellExecuteW(g_HWND, L"open", (LPCWSTR)outFolder, NULL, NULL, SW_SHOWNORMAL);
+    #endif
+  }
   MY_TRY_FINISH_VOID
 }
 

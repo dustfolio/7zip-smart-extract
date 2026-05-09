@@ -849,6 +849,19 @@ static void SetShellProgramsGroup(HWND hwndOwner)
 
 static LPCWSTR const k_Shell_Approved = L"Software\\Microsoft\\Windows\\CurrentVersion\\Shell Extensions\\Approved";
 static LPCWSTR const k_7zip_ShellExtension = L"7-Zip Shell Extension";
+static LPCWSTR const k_7zip_Archive_ProgID_Prefix = L"7-Zip.Archive.";
+
+static LPCWSTR const k_AssocExts[] =
+{
+    L"7z", L"zip", L"rar", L"001"
+  , L"tar", L"gz", L"gzip", L"tgz"
+  , L"bz2", L"bzip2", L"tbz", L"tbz2"
+  , L"xz", L"txz", L"lzma", L"z"
+  , L"cab", L"iso", L"wim", L"swm"
+  , L"arj", L"lzh", L"chm", L"cpio"
+  , L"rpm", L"deb", L"dmg", L"hfs"
+  , L"xar", L"apm", L"udf", L"vhd", L"vhdx"
+};
 
 static void WriteCLSID(void)
 {
@@ -972,6 +985,50 @@ static void WriteShellEx(void)
       
       RegCloseKey(destKey);
     }
+  }
+}
+
+static void MakeAssocProgID(WCHAR *dest, LPCWSTR ext)
+{
+  wcscpy(dest, k_7zip_Archive_ProgID_Prefix);
+  wcscat(dest, ext);
+}
+
+static void WriteArchiveAssociations(void)
+{
+  unsigned i;
+  WCHAR fmPath[MAX_PATH * 2 + 40];
+  WCHAR command[MAX_PATH * 2 + 80];
+  WCHAR keyName[MAX_PATH + 80];
+  WCHAR progID[MAX_PATH + 40];
+
+  wcscpy(fmPath, path);
+  CatAscii(fmPath, "7zFM.exe");
+
+  command[0] = '\"';
+  wcscpy(command + 1, fmPath);
+  CatAscii(command, "\" \"%1\"");
+
+  for (i = 0; i < Z7_ARRAY_SIZE(k_AssocExts); i++)
+  {
+    const LPCWSTR ext = k_AssocExts[i];
+
+    MakeAssocProgID(progID, ext);
+
+    keyName[0] = '.';
+    wcscpy(keyName + 1, ext);
+    MyRegistry_CreateKeyAndVal(HKEY_CLASSES_ROOT, keyName, NULL, progID);
+
+    wcscpy(keyName, progID);
+    MyRegistry_CreateKeyAndVal(HKEY_CLASSES_ROOT, keyName, NULL, L"7-Zip Archive");
+
+    wcscat(keyName, L"\\DefaultIcon");
+    MyRegistry_CreateKeyAndVal(HKEY_CLASSES_ROOT, keyName, NULL, fmPath);
+
+    MakeAssocProgID(progID, ext);
+    wcscpy(keyName, progID);
+    wcscat(keyName, L"\\shell\\open\\command");
+    MyRegistry_CreateKeyAndVal(HKEY_CLASSES_ROOT, keyName, NULL, command);
   }
 }
 
@@ -1610,6 +1667,7 @@ if (res == SZ_OK)
       SetRegKey_Path();
       WriteCLSID();
       WriteShellEx();
+      WriteArchiveAssociations();
       
       SetShellProgramsGroup(g_HWND);
       if (!g_SilentMode)
